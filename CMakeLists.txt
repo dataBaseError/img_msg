@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.4)
 
-set(PROJECT_NAME "messimg")
+set(PROJECT_NAME "img_msg")
 project(${PROJECT_NAME})
 
 #find_package (Threads)
