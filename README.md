@@ -15,7 +15,10 @@ Hide a message in an image
 
 2. Run the writer
 
-        ./bin/img_msg_writer "Message" /path/to/image.png
+        ./bin/img_msg_writer "Message" /path/to/image.png [ /path/to/output.png ]
+
+
+** Note that this expects a message in quotes (to allow for spaces). The image can be of any format however a lossless is recommended. The output image must be a lossless format (e.g. png or tiff). Finally in order to ensure a message hidden within a file cannot be easily detected an desirable image to use would be one that is not publicly available or the original image is not available to compare against the image with the hidden message.
 
 ## Recovering a message
 
@@ -23,4 +26,6 @@ Hide a message in an image
 
 2. Run the reader
 
-        ./bin/img_msg_reader msg_size /path/to/image.png
+        ./bin/img_msg_reader msg_size /path/to/image.png [ /path/to/output.txt ]
+
+** Note that this expects the estimated or exact size of the image, the path to the lossless image with a hidden message and optionally an output file to place the raw text message (this data could even be data if desired). The message size argument does not have to be exact, if it is larger than the actual message's size the message will show with random data (typically but not always, garbage data).
