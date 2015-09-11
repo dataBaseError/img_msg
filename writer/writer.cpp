@@ -55,6 +55,64 @@ uint8_t* ctoi(const char *c, unsigned int size) {
     return result;
 }
 
+// TODO consider allowing for a longer message to be recorded in a sequence of images (video could even be possible)
+// Would have to retun the position of the message that the was left off at. (aka current_bit)
+int hide_bits(Mat &frame, std::string &message) {
+
+    uint8_t* message_bytes = ctoi(message.c_str(), message.size());
+
+    unsigned int bit_offset = MAX_BIT;
+    unsigned int cur_byte = 0;
+
+    // parital bits don't really matter so we can use int division.
+    if(message.size() > (frame.rows * frame.cols * BIT_PER_PIXEL) / 8) {
+        std::cout << "Message to long, image will not fit the message." << std::endl;
+        return -1;
+    }
+
+    uint8_t* pixelPtr = (uint8_t*)frame.data;
+    int cn = frame.channels();
+
+    for(int i = 0; i < frame.rows; i++)
+    {
+        for(int j = 0; j < frame.cols; j++)
+        {
+            //bgrPixel.val[0] = pixelPtr[i*frame.cols*cn + j*cn + 0]; // B
+            //bgrPixel.val[1] = pixelPtr[i*frame.cols*cn + j*cn + 1]; // G
+            //bgrPixel.val[2] = pixelPtr[i*frame.cols*cn + j*cn + 2]; // R
+
+            for(int c = 0; c < BIT_PER_PIXEL; c++) {
+
+                // Blue => 0
+                // Green => 1
+                // Red => 2
+
+                // Change the color bit as necessary.
+                set_bit(pixelPtr[i*frame.cols*cn + j*cn + c], message_bytes, bit_offset);
+
+                if(bit_offset == 0) {
+                    // Move to the next character
+                    //std::cout << "num bytes = " << cur_byte << " Mess" << (int)*message_bytes << std::endl;
+                    cur_byte++;
+                    bit_offset = MAX_BIT;
+
+                    message_bytes++;
+                }
+                else {
+                    // Move to the next bit
+                    bit_offset--;
+                }
+
+                if(cur_byte == message.size()) {
+                    // No more bits to write out leave.
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;   
+}
+
 int main(int argc, char *argv[]) {
 
     //Skip program name if any
@@ -83,74 +141,19 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    uint8_t* mess_bits = ctoi(message.c_str(), message.size());
-
-    unsigned int bit_offset = MAX_BIT;
-    unsigned int bit = 0;
-    bool message_end = false;
-
     Mat frame;
     Mat original;
 
     frame = imread(image_path);
 
-    // parital bits don't really matter so we can use int division.
-    if(message.size() > (frame.rows * frame.cols * BIT_PER_PIXEL) / 8) {
-        std::cout << "Message to long, image will not fit the message." << std::endl;
-        return -1;
-    }
-
-    frame.copyTo(original);
-
-    uint8_t* pixelPtr = (uint8_t*)frame.data;
-    int cn = frame.channels();
+    frame.copyTo(original);   
 
     imshow("Original", original);
 
-    for(int i = 0; i < frame.rows; i++)
-    {
-        for(int j = 0; j < frame.cols; j++)
-        {
-            //bgrPixel.val[0] = pixelPtr[i*frame.cols*cn + j*cn + 0]; // B
-            //bgrPixel.val[1] = pixelPtr[i*frame.cols*cn + j*cn + 1]; // G
-            //bgrPixel.val[2] = pixelPtr[i*frame.cols*cn + j*cn + 2]; // R
+    int result = hide_bits(frame, message);
 
-            for(int c = 0; c < BIT_PER_PIXEL; c++) {
-
-                // Blue => 0
-                // Green => 1
-                // Red => 2
-
-                // Change the color bit as necessary.
-                set_bit(pixelPtr[i*frame.cols*cn + j*cn + c], mess_bits, bit_offset);
-
-                if(bit_offset == 0) {
-                    // Move to the next character
-                    //std::cout << "num bytes = " << bit << " Mess" << (int)*mess_bits << std::endl;
-                    bit++;
-                    bit_offset = MAX_BIT;
-
-                    mess_bits++;
-                }
-                else {
-                    // Move to the next bit
-                    bit_offset--;
-                }
-
-                if(bit == message.size()) {
-                    // No more bits to write out leave.
-                    message_end = true;
-                    break;
-                }
-            }
-
-            if(message_end) {
-                break;
-            }
-        }
-        if(message_end) {
-            break;
-        }
+    if(result < 0) {
+        return -1;
     }
 
     // Can also be a .tiff

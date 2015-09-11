@@ -86,45 +86,14 @@ uint8_t* ctoi(const char *c, unsigned int size) {
     return result;
 }
 
-int main(int argc, char *argv[]) {
-
-    //Skip program name if any
-    argc -= (argc > 0);
-    argv += (argc > 0);
-
-    unsigned int message_size;
-    std::string image_path;
-    std::string output_file;
-
-    std::ofstream output;
-
-    if(argc >= MIN_ARGS && argc <= MAX_ARGS) {
-            
-        // Get input of the estimate of the size of the message.
-        message_size = (unsigned int) strtol(argv[0], NULL, 10);
-
-        // Get the location of the image and the image name.
-        image_path = std::string(argv[1]);
-
-        if(argc == MAX_ARGS) {
-            output_file = std::string(argv[2]);
-            output.open(output_file);
-        }
-    } 
-    else {
-        std::cout << "Invalid Parameters" << std::endl;
-        return -1;
-    }
+// TODO consider adding the ability to read multiple images that contain a larger message
+// Would be necessary to return left over bits (if the writer uses remaining partial bits of images).
+int find_bits(Mat &frame, unsigned int message_size, std::string &message) {
     
     uint8_t* message_bits = (uint8_t*) malloc (message_size);
     unsigned int num_bytes = 0;
     unsigned int bit = 0;
-
-    bool message_end = false;  
-
-    Mat frame;
-
-    frame = imread(image_path);
+    bool message_end = false;
 
     // parital bits don't really matter so we can use int division.
     if(message_size > (frame.rows * frame.cols * BIT_PER_PIXEL) / 8) {
@@ -185,16 +154,60 @@ int main(int argc, char *argv[]) {
     }
 
     // Convert the message from a uint8_t to a string
-    std::string val = std::string(itoc(message_bits, message_size));
+    message = std::string(itoc(message_bits, message_size));
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+
+    //Skip program name if any
+    argc -= (argc > 0);
+    argv += (argc > 0);
+
+    unsigned int message_size;
+    std::string image_path;
+    std::string output_file;
+
+    std::ofstream output;
+
+    if(argc >= MIN_ARGS && argc <= MAX_ARGS) {
+            
+        // Get input of the estimate of the size of the message.
+        message_size = (unsigned int) strtol(argv[0], NULL, 10);
+
+        // Get the location of the image and the image name.
+        image_path = std::string(argv[1]);
+
+        if(argc == MAX_ARGS) {
+            output_file = std::string(argv[2]);
+            output.open(output_file);
+        }
+    } 
+    else {
+        std::cout << "Invalid Parameters" << std::endl;
+        return -1;
+    }    
+
+    Mat frame;
+
+    frame = imread(image_path);
+
+    std::string message;
+
+    int result = find_bits(frame, message_size, message);
+
+    if(result < 0) {
+        return -1;
+    }
 
     if(output_file.size() == 0) {
         // No output provide print it out to console
-        std::cout << "Message: " << val << std::endl;
+        std::cout << "Message: " << message << std::endl;
     }
     else {
         // TODO test
         // Output message to file if path is given
-        output << "Message: " << val << std::endl;
+        output << "Message: " << message << std::endl;
         output.close();
     }
 
