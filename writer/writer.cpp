@@ -31,41 +31,19 @@ void set_bit(uint8_t &pixels, uint8_t* bits, unsigned int &bit_offset) {
     //std::cout << "msg " << (int)pixels[offset] << " bit " << (int)(*bits >> bit_offset) << " Pix " << (int)temp << std::endl;
 }
 
-/**
- * Covert an array of characters to an array of uint8_t
- * @param c The input character array to be converted
- * @param size The size of the character array.
- *
- * @return The converted uint8_t array.
- */
-uint8_t* ctoi(const char *c, unsigned int size) {
-
-    uint8_t* result = (uint8_t*) malloc (size);
-    unsigned int i = 0;
-    while(i < size) {
-        *result = (uint8_t) *c;
-
-        //std::cout << "Char " << *c << " int = " << (int)*result << std::endl;
-        c++;
-        result++;
-        i++;
-    }
-    result-=i;
-
-    return result;
-}
+// TODO consider generalizing this to just allow bytes to be written into the picture.
 
 // TODO consider allowing for a longer message to be recorded in a sequence of images (video could even be possible)
 // Would have to retun the position of the message that the was left off at. (aka current_bit)
-int hide_bits(Mat &frame, std::string &message) {
+int hide_bits(Mat &frame, void* data, std::size_t size, std::size_t ele_size) {
 
-    uint8_t* message_bytes = ctoi(message.c_str(), message.size());
+    uint8_t* message_bytes = (uint8_t*)data;//ctoi(data, size * ele_size);
 
     unsigned int bit_offset = MAX_BIT;
     unsigned int cur_byte = 0;
 
     // parital bits don't really matter so we can use int division.
-    if(message.size() > (frame.rows * frame.cols * BIT_PER_PIXEL) / 8) {
+    if(size*ele_size > (frame.rows * frame.cols * BIT_PER_PIXEL) / 8) {
         std::cout << "Message to long, image will not fit the message." << std::endl;
         return -1;
     }
@@ -103,7 +81,7 @@ int hide_bits(Mat &frame, std::string &message) {
                     bit_offset--;
                 }
 
-                if(cur_byte == message.size()) {
+                if(cur_byte == size*ele_size) {
                     // No more bits to write out leave.
                     return 0;
                 }
@@ -133,6 +111,7 @@ int main(int argc, char *argv[]) {
 
         if(argc == MAX_ARGS) {
             // TODO check if this image/path is valid.
+            // TODO reject image name that is not .png
             output_dir = std::string(argv[2]);
         }
     } 
@@ -150,7 +129,10 @@ int main(int argc, char *argv[]) {
 
     imshow("Original", original);
 
-    int result = hide_bits(frame, message);
+    const char * msg_chr = message.c_str();
+
+    // Using message.size() instead of sizeof(msg_chr) prevents \0 from being written into the image.
+    int result = hide_bits(frame, (void *) msg_chr, message.size(), sizeof(*msg_chr));
 
     if(result < 0) {
         return -1;

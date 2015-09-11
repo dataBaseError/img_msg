@@ -88,7 +88,7 @@ uint8_t* ctoi(const char *c, unsigned int size) {
 
 // TODO consider adding the ability to read multiple images that contain a larger message
 // Would be necessary to return left over bits (if the writer uses remaining partial bits of images).
-int find_bits(Mat &frame, unsigned int message_size, std::string &message) {
+int find_bits(Mat &frame, unsigned int message_size, void* &data) {
     
     uint8_t* message_bits = (uint8_t*) malloc (message_size);
     unsigned int num_bytes = 0;
@@ -97,7 +97,7 @@ int find_bits(Mat &frame, unsigned int message_size, std::string &message) {
 
     // parital bits don't really matter so we can use int division.
     if(message_size > (frame.rows * frame.cols * BIT_PER_PIXEL) / 8) {
-        std::cout << "Message to long, image will not fit the message." << std::endl;
+        std::cout << "Message estimate to long, image would not fit a message that large." << std::endl;
         return -1;
     }
 
@@ -153,8 +153,10 @@ int find_bits(Mat &frame, unsigned int message_size, std::string &message) {
         }
     }
 
-    // Convert the message from a uint8_t to a string
-    message = std::string(itoc(message_bits, message_size));
+    data = malloc (message_size);
+    data = (void*) message_bits;
+
+    //free(message_bits);
     return 0;
 }
 
@@ -176,6 +178,7 @@ int main(int argc, char *argv[]) {
         message_size = (unsigned int) strtol(argv[0], NULL, 10);
 
         // Get the location of the image and the image name.
+        // TODO reject an image that is not using .png or tiff (or some other lossless image)
         image_path = std::string(argv[1]);
 
         if(argc == MAX_ARGS) {
@@ -192,9 +195,16 @@ int main(int argc, char *argv[]) {
 
     frame = imread(image_path);
 
+    void * data;
+
+    int result = find_bits(frame, message_size, data);
+
     std::string message;
 
-    int result = find_bits(frame, message_size, message);
+    char* bit_msg = itoc((uint8_t*)data, message_size);
+
+    // Convert the message from a char* to a string
+    message = std::string(bit_msg);
 
     if(result < 0) {
         return -1;
@@ -210,6 +220,8 @@ int main(int argc, char *argv[]) {
         output << "Message: " << message << std::endl;
         output.close();
     }
+
+    free(data);
 
     return 0;
 }
