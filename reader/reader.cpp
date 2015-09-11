@@ -1,16 +1,20 @@
 
-
 #include <cv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+
 #include <iostream>
+#include <fstream>
 
 #include <string.h>
-
 #include <stdlib.h>
 
 #define MAX_BIT 7
-#define MAX_ARGS 2
+#define MIN_ARGS 2
+#define MAX_ARGS 3
+
+// Should be between 1 and 3 (not sure if there are more bits available per pixel)
+#define BIT_PER_PIXEL 3
 
 using namespace cv;
 
@@ -90,16 +94,22 @@ int main(int argc, char *argv[]) {
 
     unsigned int message_size;
     std::string image_path;
+    std::string output_file;
 
-    //TODO output directory/name for text
+    std::ofstream output;
 
-    if(argc == MAX_ARGS) {
+    if(argc >= MIN_ARGS && argc <= MAX_ARGS) {
             
         // Get input of the estimate of the size of the message.
         message_size = (unsigned int) strtol(argv[0], NULL, 10);
 
         // Get the location of the image and the image name.
         image_path = std::string(argv[1]);
+
+        if(argc == MAX_ARGS) {
+            output_file = std::string(argv[2]);
+            output.open(output_file);
+        }
     } 
     else {
         std::cout << "Invalid Parameters" << std::endl;
@@ -116,6 +126,12 @@ int main(int argc, char *argv[]) {
 
     frame = imread(image_path);
 
+    // parital bits don't really matter so we can use int division.
+    if(message_size > (frame.rows * frame.cols * BIT_PER_PIXEL) / 8) {
+        std::cout << "Message to long, image will not fit the message." << std::endl;
+        return -1;
+    }
+
     uint8_t* pixelPtr = (uint8_t*)frame.data;
     int cn = frame.channels();
 
@@ -126,30 +142,40 @@ int main(int argc, char *argv[]) {
             //bgrPixel.val[0] = pixelPtr[i*frame.cols*cn + j*cn + 0]; // B
             //bgrPixel.val[1] = pixelPtr[i*frame.cols*cn + j*cn + 1]; // G
             //bgrPixel.val[2] = pixelPtr[i*frame.cols*cn + j*cn + 2]; // R
-            
-            // Change the Blue rgb value if necessary
-            set_bit(*message_bits, pixelPtr[i*frame.cols*cn + j*cn + 0], bit);
 
-            if(bit == 8) {
+            for(int c = 0; c < BIT_PER_PIXEL; c++) {
 
-                //std::cout << "Size = " << message_size << std::endl;
-                //std::cout << "num bytes = " << num_bytes << " Mess" << (int)*message_bits << std::endl;
-                // Finished adding bits to the storage
-                bit = 0;
-                num_bytes++;
+                // Blue => 0
+                // Green => 1
+                // Red => 2
+                // Read the color bit as necessary.
+                set_bit(*message_bits, pixelPtr[i*frame.cols*cn + j*cn + c], bit);
 
-                // Increment the storage byte
-                message_bits++;
+                if(bit == 8) {
+
+                    //std::cout << "Size = " << message_size << std::endl;
+                    //std::cout << "num bytes = " << num_bytes << " Mess" << (int)*message_bits << std::endl;
+                    // Finished adding bits to the storage
+                    bit = 0;
+                    num_bytes++;
+
+                    // Increment the storage byte
+                    message_bits++;
+                }
+                else {
+                    // Move onto the next bit.
+                    *message_bits <<= 1;
+                }
+
+                if(num_bytes == message_size) {
+                    // Finished reading the last byte of the message
+                    message_bits -= num_bytes;
+                    message_end = true;
+                    break;
+                }
             }
-            else {
-                // Move onto the next bit.
-                *message_bits <<= 1;
-            }
 
-            if(num_bytes == message_size) {
-                // Finished reading the last byte of the message
-                message_bits -= num_bytes;
-                message_end = true;
+            if(message_end) {
                 break;
             }
         }
@@ -161,7 +187,16 @@ int main(int argc, char *argv[]) {
     // Convert the message from a uint8_t to a string
     std::string val = std::string(itoc(message_bits, message_size));
 
-    std::cout << "Message " << val << std::endl;
+    if(output_file.size() == 0) {
+        // No output provide print it out to console
+        std::cout << "Message: " << val << std::endl;
+    }
+    else {
+        // TODO test
+        // Output message to file if path is given
+        output << "Message: " << val << std::endl;
+        output.close();
+    }
 
     return 0;
 }

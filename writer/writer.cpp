@@ -9,7 +9,11 @@
 #include <stdlib.h>
 
 #define MAX_BIT 7
-#define MAX_ARGS 2
+#define MIN_ARGS 2
+#define MAX_ARGS 3
+
+// Should be between 1 and 3 (not sure if there are more bits available per pixel)
+#define BIT_PER_PIXEL 3
 
 using namespace cv;
 
@@ -25,8 +29,6 @@ void set_bit(uint8_t &pixels, uint8_t* bits, unsigned int &bit_offset) {
     
     pixels ^= temp;
     //std::cout << "msg " << (int)pixels[offset] << " bit " << (int)(*bits >> bit_offset) << " Pix " << (int)temp << std::endl;
-
-    //return pixels;
 }
 
 /**
@@ -61,16 +63,20 @@ int main(int argc, char *argv[]) {
 
     std::string message;
     std::string image_path;
+    std::string output_dir = "./image.png";
 
-    //TODO output directory/name
-
-    if(argc == MAX_ARGS) {
+    if(argc >= MIN_ARGS && argc <= MAX_ARGS) {
             
         // Get input of the message.
         message = std::string(argv[0]);
 
         // Get the location of the image and the image name.
         image_path = std::string(argv[1]);
+
+        if(argc == MAX_ARGS) {
+            // TODO check if this image/path is valid.
+            output_dir = std::string(argv[2]);
+        }
     } 
     else {
         std::cout << "Invalid Parameters" << std::endl;
@@ -87,6 +93,13 @@ int main(int argc, char *argv[]) {
     Mat original;
 
     frame = imread(image_path);
+
+    // parital bits don't really matter so we can use int division.
+    if(message.size() > (frame.rows * frame.cols * BIT_PER_PIXEL) / 8) {
+        std::cout << "Message to long, image will not fit the message." << std::endl;
+        return -1;
+    }
+
     frame.copyTo(original);
 
     uint8_t* pixelPtr = (uint8_t*)frame.data;
@@ -102,25 +115,36 @@ int main(int argc, char *argv[]) {
             //bgrPixel.val[1] = pixelPtr[i*frame.cols*cn + j*cn + 1]; // G
             //bgrPixel.val[2] = pixelPtr[i*frame.cols*cn + j*cn + 2]; // R
 
-            // Blue
-            set_bit(pixelPtr[i*frame.cols*cn + j*cn + 0], mess_bits, bit_offset);
+            for(int c = 0; c < BIT_PER_PIXEL; c++) {
 
-            if(bit_offset == 0) {
-                // Move to the next character
-                //std::cout << "num bytes = " << bit << " Mess" << (int)*mess_bits << std::endl;
-                bit++;
-                bit_offset = MAX_BIT;
+                // Blue => 0
+                // Green => 1
+                // Red => 2
 
-                mess_bits++;
+                // Change the color bit as necessary.
+                set_bit(pixelPtr[i*frame.cols*cn + j*cn + c], mess_bits, bit_offset);
+
+                if(bit_offset == 0) {
+                    // Move to the next character
+                    //std::cout << "num bytes = " << bit << " Mess" << (int)*mess_bits << std::endl;
+                    bit++;
+                    bit_offset = MAX_BIT;
+
+                    mess_bits++;
+                }
+                else {
+                    // Move to the next bit
+                    bit_offset--;
+                }
+
+                if(bit == message.size()) {
+                    // No more bits to write out leave.
+                    message_end = true;
+                    break;
+                }
             }
-            else {
-                // Move to the next bit
-                bit_offset--;
-            }
 
-            if(bit == message.size()) {
-                // No more bits to write out leave.
-                message_end = true;
+            if(message_end) {
                 break;
             }
         }
@@ -130,7 +154,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Can also be a .tiff
-    imwrite("image.png", frame);
+    imwrite(output_dir, frame);
 
     imshow("Display window", frame);
     waitKey(0);
