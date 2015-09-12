@@ -88,7 +88,7 @@ uint8_t* ctoi(const char *c, unsigned int size) {
 
 // TODO consider adding the ability to read multiple images that contain a larger message
 // Would be necessary to return left over bits (if the writer uses remaining partial bits of images).
-int find_bits(Mat &frame, unsigned int message_size, void* &data) {
+int find_bits(Mat &frame, unsigned int message_size, uint8_t* &data) {
     
     uint8_t* message_bits = (uint8_t*) malloc (message_size);
     unsigned int num_bytes = 0;
@@ -195,13 +195,13 @@ int main(int argc, char *argv[]) {
 
     frame = imread(image_path);
 
-    void * data;
+    uint8_t* data;
 
     int result = find_bits(frame, message_size, data);
 
     std::string message;
 
-    char* bit_msg = itoc((uint8_t*)data, message_size);
+    char* bit_msg = itoc(data, message_size);
 
     // Convert the message from a char* to a string
     message = std::string(bit_msg);
