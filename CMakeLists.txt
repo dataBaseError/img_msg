@@ -39,26 +39,30 @@ SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
+#FILE(GLOB INCLUDE_FILES include/*.hpp)
+
+FILE(GLOB SOURCE_FILES src/*.cpp)
+
 FILE(GLOB WRITER_SOURCE_FILES writer/*.cpp)
 
 FILE(GLOB READER_SOURCE_FILES reader/*.cpp)
 
-#set(HEADER_DIR include)
+set(HEADER_DIR include)
 
-#FILE(GLOB HEADER_FILES ${HEADER_DIR}/*.hpp) 
+FILE(GLOB HEADER_FILES ${HEADER_DIR}/*.hpp) 
 
 include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIR})
 
-include_directories(${OpenCV2_INCLUDE_DIR} ${OpenCV_INCLUDE_DIR})
+include_directories(${HEADER_DIR} ${OpenCV2_INCLUDE_DIR} ${OpenCV_INCLUDE_DIR})
 link_directories(${local_LIBRARY_DIR})
 
 # Create the first executable for writing.
-add_executable(${PROJECT_NAME}_writer ${WRITER_SOURCE_FILES})
+add_executable(${PROJECT_NAME}_writer ${WRITER_SOURCE_FILES} ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_libraries (${PROJECT_NAME}_writer ${Boost_LIBRARIES}  ${CMAKE_THREAD_LIBS_INIT} ${OpenCV_LIBRARIES})
 
 # Create the second executable for reading
-add_executable(${PROJECT_NAME}_reader ${READER_SOURCE_FILES})
+add_executable(${PROJECT_NAME}_reader ${READER_SOURCE_FILES} ${SOURCE_FILES} ${HEADER_FILES})
 
 target_link_libraries (${PROJECT_NAME}_reader ${Boost_LIBRARIES}  ${CMAKE_THREAD_LIBS_INIT} ${OpenCV_LIBRARIES})
